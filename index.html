@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+
+<title>Mastodon bookmark archiver tool</title>
+
+<style>
+body {
+    max-width: 1000px;
+    margin: 20px auto;
+    background: rgb(25, 25, 25);
+    color: white;
+    font: 1.125em/1.62 "Helvetica", "Helvetica Neue", arial, sans-serif;
+}
+
+textarea {
+    width: 100%;
+    height: 200px;
+    background-color: rgb(25, 25, 25);
+    color: white;
+}
+
+code {
+    font: 0.8em "Menlo", monospace;
+    border: 1px solid #333;
+    color: #FF5E5E;
+    background-color: rgba(135, 131, 120, 0.15);
+    border-radius: 3px;
+    padding: 1px 3px;
+    font-size: 0.75em;
+}
+</style>
+
+<h1>Bookmark export</h1>
+
+<ol>
+    <li>Go to <code>mastodon.social/settings/export</code>, adapt for your instance.</li>
+
+    <li>Paste the contents of an exported <code>bookmarks.csv</code> file from Mastodon:<br>
+
+    <textarea id=bookmark-csv></textarea>
+
+    </li>
+
+    <li>Click <button id=bookmark-convert-btn>Convert</button></li>
+
+    <li>Wait for the results. <div id=progress></div></li>
+
+    <li>Save the output somewhere as a <code>.jsonl</code> file.
+
+    <textarea id=bookmark-output></textarea>
+
+    </li>
+
+<ol>
+
+<script>
+document.getElementById("bookmark-convert-btn").addEventListener("click", async () => {
+    const progress = document.getElementById("progress");
+    const output = document.getElementById("bookmark-output");
+    const lines = document.getElementById("bookmark-csv").value.replace("\r", "").split("\n");
+
+    output.value = '';
+
+    let i = 0;
+
+    for (const line of lines) {
+        progress.innerHTML = `Processing ${i} of ${lines.length} bookmarks.`;
+        i += 1;
+
+        let outputLine;
+
+        try {
+            const tootId = /[^/]\/(\d+)/.exec(line)[1];
+            const tootUrl = new URL(line);
+            const tootApiUrl = `${tootUrl.origin}/api/v1/statuses/${tootId}`;
+            const response = await fetch(tootApiUrl);
+            const jsonResponse = await response.json();
+            outputLine = JSON.stringify(jsonResponse);
+        } catch(e) {
+            outputLine = JSON.stringify({
+                "bookmark_export_csv_url": line,
+                "bookmark_export_error": e.message,
+            });
+        }
+        output.value += `${outputLine}\n`;
+    }
+
+    progress.innerHTML = "Done!";
+});
+</script>
